@@ -13,8 +13,12 @@ def list_collaborators(db: Session = Depends(get_db)):
 
 @router.post("/", response_model=schemas.CollaboratorOut, status_code=201)
 def create_collaborator(data: schemas.CollaboratorCreate, db: Session = Depends(get_db)):
-    obj = models.Collaborator(**data.model_dump())
+    collab_data = data.model_dump(exclude={"profiles"})
+    obj = models.Collaborator(**collab_data)
     db.add(obj)
+    db.flush()
+    for p in data.profiles:
+        db.add(models.CollaboratorProfile(collaborator_id=obj.id, profile=p))
     db.commit()
     db.refresh(obj)
     return obj
@@ -33,8 +37,18 @@ def update_collaborator(id: int, data: schemas.CollaboratorUpdate, db: Session =
     obj = db.query(models.Collaborator).filter(models.Collaborator.id == id).first()
     if not obj:
         raise HTTPException(status_code=404, detail="Collaborateur introuvable")
-    for k, v in data.model_dump().items():
+    collab_data = data.model_dump(exclude={"profiles"})
+    for k, v in collab_data.items():
         setattr(obj, k, v)
+    # Replace profiles atomically
+    db.query(models.CollaboratorProfile).filter(
+        models.CollaboratorProfile.collaborator_id == id
+    ).delete()
+    for p in data.profiles:
+        db.add(models.CollaboratorProfile(collaborator_id=obj.id, profile=p))
+    # Retrocompatibility: sync profile field with first profile
+    if data.profiles:
+        obj.profile = data.profiles[0]
     db.commit()
     db.refresh(obj)
     return obj

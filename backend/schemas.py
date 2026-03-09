@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import date
 from typing import Optional
 
@@ -15,17 +15,25 @@ class CollaboratorBase(BaseModel):
 
 
 class CollaboratorCreate(CollaboratorBase):
-    pass
+    profiles: list[str] = []
 
 
 class CollaboratorUpdate(CollaboratorBase):
-    pass
+    profiles: list[str] = []
 
 
 class CollaboratorOut(CollaboratorBase):
     id: int
+    profiles: list[str] = []
 
     model_config = {"from_attributes": True}
+
+    @field_validator("profiles", mode="before")
+    @classmethod
+    def coerce_profiles(cls, v):
+        if isinstance(v, list):
+            return [p.profile if hasattr(p, "profile") else p for p in v]
+        return v
 
 
 # ── Absence ───────────────────────────────────────────────────────────────────

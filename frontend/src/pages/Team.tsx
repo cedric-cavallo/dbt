@@ -13,10 +13,13 @@ function CollaboratorForm({
   initial, onSubmit, onClose,
 }: { initial?: Partial<Collaborator>; onSubmit: (d: any) => void; onClose: () => void }) {
   const { data: refs } = useQuery({ queryKey: ["refs"], queryFn: getReferentials });
+  const defaultProfiles = initial?.profiles && initial.profiles.length > 0
+    ? initial.profiles
+    : initial?.profile ? [initial.profile] : ["consultant"];
+  const [profiles, setProfiles] = useState<string[]>(defaultProfiles);
   const [form, setForm] = useState({
     name: initial?.name ?? "",
     email: initial?.email ?? "",
-    profile: initial?.profile ?? "consultant",
     daily_cost: initial?.daily_cost ?? 0,
     color: initial?.color ?? COLORS[Math.floor(Math.random() * COLORS.length)],
     is_active: initial?.is_active ?? true,
@@ -24,8 +27,21 @@ function CollaboratorForm({
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.type === "number" ? parseFloat(e.target.value) || 0 : e.target.value }));
 
+  const toggleProfile = (value: string) => {
+    setProfiles((prev) =>
+      prev.includes(value)
+        ? prev.length > 1 ? prev.filter((p) => p !== value) : prev
+        : [...prev, value]
+    );
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({ ...form, profile: profiles[0], profiles });
+  };
+
   return (
-    <form className="p-6 space-y-4" onSubmit={(e) => { e.preventDefault(); onSubmit(form); }}>
+    <form className="p-6 space-y-4" onSubmit={handleSubmit}>
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
           <label className="label">Nom *</label>
@@ -35,11 +51,25 @@ function CollaboratorForm({
           <label className="label">Email</label>
           <input type="email" className="input" value={form.email} onChange={set("email")} />
         </div>
-        <div>
-          <label className="label">Profil *</label>
-          <select className="input" value={form.profile} onChange={set("profile")}>
-            {refs?.profiles.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
+        <div className="col-span-2">
+          <label className="label">Profil(s) * <span className="text-gray-400 font-normal">(au moins 1)</span></label>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {refs?.profiles.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => toggleProfile(p.value)}
+                className="px-3 py-1 rounded-full text-sm border transition-colors"
+                style={
+                  profiles.includes(p.value)
+                    ? { backgroundColor: "#2563eb", borderColor: "#2563eb", color: "#fff" }
+                    : { backgroundColor: "#f9fafb", borderColor: "#e5e7eb", color: "#374151" }
+                }
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div>
           <label className="label">Coût journalier (€)</label>
@@ -144,7 +174,8 @@ function CollaboratorCard({ collab }: { collab: Collaborator }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["absences", collab.id] }),
   });
 
-  const profileLabel = refs?.profiles.find((p) => p.value === collab.profile)?.label ?? collab.profile;
+  const profileLabels = (collab.profiles && collab.profiles.length > 0 ? collab.profiles : [collab.profile])
+    .map((p) => refs?.profiles.find((r) => r.value === p)?.label ?? p);
 
   const upcomingAbsences = absences
     .filter((a) => a.end_date >= new Date().toISOString().split("T")[0])
@@ -163,7 +194,13 @@ function CollaboratorCard({ collab }: { collab: Collaborator }) {
             </div>
             <div>
               <h3 className="font-semibold text-gray-900">{collab.name}</h3>
-              <p className="text-sm text-gray-500">{profileLabel}</p>
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {profileLabels.map((label) => (
+                  <span key={label} className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                    {label}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-4">

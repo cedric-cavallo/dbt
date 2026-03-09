@@ -16,6 +16,15 @@ class Collaborator(Base):
 
     absences = relationship("Absence", back_populates="collaborator", cascade="all, delete-orphan")
     task_assignments = relationship("TaskAssignment", back_populates="collaborator")
+    profiles = relationship("CollaboratorProfile", cascade="all, delete-orphan")
+
+
+class CollaboratorProfile(Base):
+    __tablename__ = "collaborator_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    collaborator_id = Column(Integer, ForeignKey("collaborators.id"), nullable=False)
+    profile = Column(String, nullable=False)
 
 
 class Project(Base):

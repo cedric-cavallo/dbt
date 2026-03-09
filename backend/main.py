@@ -1,10 +1,32 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import engine, Base
+from database import engine, Base, SessionLocal
 import models
 from routers import collaborators, projects, tasks, absences, planning
 
 Base.metadata.create_all(bind=engine)
+
+
+def _migrate_profiles():
+    """Idempotent migration: copy existing profile -> CollaboratorProfile for collaborators without entries."""
+    db = SessionLocal()
+    try:
+        collabs = db.query(models.Collaborator).all()
+        count = 0
+        for c in collabs:
+            if not c.profiles and c.profile:
+                db.add(models.CollaboratorProfile(collaborator_id=c.id, profile=c.profile))
+                count += 1
+        if count:
+            db.commit()
+            print(f"[migration] {count} collaborateur(s) migrés vers CollaboratorProfile")
+        else:
+            print("[migration] CollaboratorProfile déjà à jour")
+    finally:
+        db.close()
+
+
+_migrate_profiles()
 
 app = FastAPI(title="Team Workload API", version="1.0.0")
 

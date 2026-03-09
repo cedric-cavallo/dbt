@@ -165,6 +165,7 @@ def get_planning(
                 "id": collab.id,
                 "name": collab.name,
                 "profile": collab.profile,
+                "profiles": [p.profile for p in collab.profiles],
                 "color": collab.color,
                 "daily_cost": collab.daily_cost,
             },

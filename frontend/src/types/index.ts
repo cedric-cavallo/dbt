@@ -3,6 +3,7 @@ export interface Collaborator {
   name: string;
   email?: string;
   profile: string;
+  profiles: string[];
   daily_cost: number;
   color: string;
   is_active: boolean;
@@ -94,6 +95,7 @@ export interface CollaboratorPlanning {
     id: number;
     name: string;
     profile: string;
+    profiles: string[];
     color: string;
     daily_cost: number;
   };
